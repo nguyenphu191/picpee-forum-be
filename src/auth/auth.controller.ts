@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Session, Get, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Body, Session, Get, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto } from './dto/auth.dto';
 
@@ -14,6 +14,15 @@ export class AuthController {
   @Post('login')
   async login(@Body() dto: LoginDto, @Session() session: any) {
     const user = await this.authService.login(dto);
+    session.userId = user.id;
+    session.role = user.role;
+    return user;
+  }
+
+  @Post('firebase')
+  async firebaseLogin(@Body('idToken') idToken: string, @Session() session: any) {
+    if (!idToken) throw new BadRequestException('idToken is required');
+    const user = await this.authService.firebaseLogin(idToken);
     session.userId = user.id;
     session.role = user.role;
     return user;

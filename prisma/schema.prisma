@@ -21,7 +21,9 @@ model User {
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
   status            String         @default("ACTIVE")
-  password          String
+  password          String?
+  provider          String?
+  providerId        String?
   phoneNumber       String?
   bankName          String?
   bankAccountNumber String?
