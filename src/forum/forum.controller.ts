@@ -119,6 +119,24 @@ export class ForumController {
     return this.forumService.getAnalyticsStats();
   }
 
+  @Post('bookmarks/toggle')
+  async toggleBookmark(@Body('threadId') threadId: string, @Session() session: any) {
+    if (!session.userId) throw new UnauthorizedException('Bạn cần đăng nhập để lưu bài viết');
+    return this.forumService.toggleBookmark(threadId, session.userId);
+  }
+
+  @Get('me/bookmarks')
+  async getMyBookmarks(@Session() session: any) {
+    if (!session.userId) throw new UnauthorizedException('Bạn chưa đăng nhập');
+    return this.forumService.getUserBookmarks(session.userId);
+  }
+
+  @Get('bookmarks/check/:threadId')
+  async checkBookmark(@Param('threadId') threadId: string, @Session() session: any) {
+    if (!session.userId) return { bookmarked: false };
+    return this.forumService.isBookmarked(threadId, session.userId);
+  }
+
   @Get('me/threads')
   async getMyThreads(@Session() session: any) {
     if (!session.userId) {

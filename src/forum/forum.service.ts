@@ -521,6 +521,43 @@ export class ForumService {
     });
   }
 
+  async toggleBookmark(threadId: string, userId: string) {
+    const existing = await this.prisma.bookmark.findUnique({
+      where: { userId_threadId: { userId, threadId } }
+    });
+
+    if (existing) {
+      await this.prisma.bookmark.delete({ where: { userId_threadId: { userId, threadId } } });
+      return { bookmarked: false };
+    } else {
+      await this.prisma.bookmark.create({ data: { userId, threadId } });
+      return { bookmarked: true };
+    }
+  }
+
+  async getUserBookmarks(userId: string) {
+    return this.prisma.bookmark.findMany({
+      where: { userId },
+      include: {
+        thread: {
+          include: {
+            author: { select: { username: true, avatarUrl: true } },
+            board: { select: { name: true, slug: true } },
+            _count: { select: { posts: true, likes: true } }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
+  async isBookmarked(threadId: string, userId: string) {
+    const b = await this.prisma.bookmark.findUnique({
+      where: { userId_threadId: { userId, threadId } }
+    });
+    return { bookmarked: !!b };
+  }
+
   async deleteThread(id: string, authorId: string) {
     const thread = await this.prisma.thread.findUnique({
       where: { id }
