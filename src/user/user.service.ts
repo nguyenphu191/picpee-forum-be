@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 
@@ -41,9 +41,10 @@ export class UserService {
     return result;
   }
 
-  async updateProfile(userId: string, data: { 
-    avatarUrl?: string, 
-    signature?: string, 
+  async updateProfile(userId: string, data: {
+    username?: string,
+    avatarUrl?: string,
+    signature?: string,
     password?: string,
     phoneNumber?: string,
     bankName?: string,
@@ -51,6 +52,22 @@ export class UserService {
     bankAccountName?: string
   }) {
     const updateData: any = {};
+
+    if (data.username !== undefined) {
+      const trimmed = data.username.trim();
+      if (trimmed.length < 3 || trimmed.length > 30) {
+        throw new BadRequestException('Tên người dùng phải từ 3 đến 30 ký tự');
+      }
+      if (!/^[a-zA-Z0-9_]+$/.test(trimmed)) {
+        throw new BadRequestException('Tên người dùng chỉ được chứa chữ cái, số và dấu gạch dưới');
+      }
+      const existing = await this.prisma.user.findFirst({
+        where: { username: trimmed, NOT: { id: userId } }
+      });
+      if (existing) throw new ConflictException('Tên người dùng đã được sử dụng');
+      updateData.username = trimmed;
+    }
+
     if (data.avatarUrl) updateData.avatarUrl = data.avatarUrl;
     if (data.signature !== undefined) updateData.signature = data.signature;
     if (data.phoneNumber !== undefined) updateData.phoneNumber = data.phoneNumber;
