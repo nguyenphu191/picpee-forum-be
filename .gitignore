@@ -2,3 +2,5 @@ node_modules
 dist/
 # Keep environment variables out of version control
 .env
+# Firebase service account key (contains private key - never commit)
+firebase-service-account.json
