@@ -383,7 +383,7 @@ export class AdminService {
     } else {
       // Gửi cho tất cả người dùng
       const users = await this.prisma.user.findMany({ select: { id: true } });
-      const notifications = users.map(user => ({
+      const notifications = users.map((user: { id: string }) => ({
         receiverId: user.id,
         senderId: data.senderId,
         type: data.type,

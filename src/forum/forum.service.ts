@@ -141,11 +141,11 @@ export class ForumService {
       take: 50 // Fetch a pool to sort
     });
 
-    const trending = threads.map(t => ({
+    const trending = threads.map((t) => ({
       ...t,
       score: (t.views * 1) + (t._count.likes * 5)
     }))
-    .sort((a, b) => b.score - a.score)
+    .sort((a: { score: number }, b: { score: number }) => b.score - a.score)
     .slice(0, 16);
 
     return trending;
@@ -172,7 +172,7 @@ export class ForumService {
       totalViews: totalViews._sum.views || 0,
       totalClicks,
       totalLikes,
-      topThreads: topThreads.map(t => ({
+      topThreads: topThreads.map((t: any) => ({
         title: t.title,
         views: t.views,
         likes: t._count.likes
@@ -202,7 +202,7 @@ export class ForumService {
       });
     }
 
-    const tagIds = thread.tags.map(t => t.id);
+    const tagIds = thread.tags.map((t: { id: string }) => t.id);
 
     // Find threads that share at least one tag
     return this.prisma.thread.findMany({
