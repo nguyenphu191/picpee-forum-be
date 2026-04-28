@@ -1,7 +1,8 @@
-import { Controller, Get, Param, Put, Body, Session, UnauthorizedException, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Param, Put, Body, Post, UploadedFile, UseInterceptors, UseGuards, Req } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UserService } from './user.service';
 import { UploadService } from '../upload/upload.service';
+import { JwtGuard } from '../auth/jwt.guard';
 
 @Controller('users')
 export class UserController {
@@ -11,21 +12,17 @@ export class UserController {
   ) {}
 
   @Put('profile')
-  async updateProfile(@Body() body: any, @Session() session: any) {
-    if (!session.userId) {
-      throw new UnauthorizedException('Please login first');
-    }
-    return this.userService.updateProfile(session.userId, body);
+  @UseGuards(JwtGuard)
+  async updateProfile(@Body() body: any, @Req() req: any) {
+    return this.userService.updateProfile(req.user.id, body);
   }
 
   @Post('avatar')
+  @UseGuards(JwtGuard)
   @UseInterceptors(FileInterceptor('file'))
-  async uploadAvatar(@UploadedFile() file: Express.Multer.File, @Session() session: any) {
-    if (!session.userId) {
-      throw new UnauthorizedException('Please login first');
-    }
+  async uploadAvatar(@UploadedFile() file: Express.Multer.File, @Req() req: any) {
     const result = await this.uploadService.uploadFile(file);
-    return this.userService.updateProfile(session.userId, { avatarUrl: result.secure_url });
+    return this.userService.updateProfile(req.user.id, { avatarUrl: result.secure_url });
   }
 
   @Get('leaderboard')

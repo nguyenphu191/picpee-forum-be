@@ -1,25 +1,26 @@
-import { Controller, Get, Post, Param, Session, UnauthorizedException } from '@nestjs/common';
+import { Controller, Get, Post, Param, UseGuards, Req } from '@nestjs/common';
 import { ForumService } from './forum.service';
+import { JwtGuard } from '../auth/jwt.guard';
 
 @Controller('notifications')
 export class NotificationController {
   constructor(private forumService: ForumService) {}
 
   @Get()
-  async getNotifications(@Session() session: any) {
-    if (!session.userId) throw new UnauthorizedException();
-    return this.forumService.getNotifications(session.userId);
+  @UseGuards(JwtGuard)
+  async getNotifications(@Req() req: any) {
+    return this.forumService.getNotifications(req.user.id);
   }
 
   @Post(':id/read')
-  async markAsRead(@Param('id') id: string, @Session() session: any) {
-    if (!session.userId) throw new UnauthorizedException();
+  @UseGuards(JwtGuard)
+  async markAsRead(@Param('id') id: string) {
     return this.forumService.markNotificationAsRead(id);
   }
 
   @Post('read-all')
-  async markAllAsRead(@Session() session: any) {
-    if (!session.userId) throw new UnauthorizedException();
-    return this.forumService.markAllNotificationsAsRead(session.userId);
+  @UseGuards(JwtGuard)
+  async markAllAsRead(@Req() req: any) {
+    return this.forumService.markAllNotificationsAsRead(req.user.id);
   }
 }

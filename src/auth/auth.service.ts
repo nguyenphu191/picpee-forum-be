@@ -2,11 +2,20 @@ import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/co
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto, LoginDto } from './dto/auth.dto';
 import * as bcrypt from 'bcrypt';
+import * as jwt from 'jsonwebtoken';
 import admin from './firebase-admin';
 
 @Injectable()
 export class AuthService {
   constructor(private prisma: PrismaService) {}
+
+  private generateToken(user: { id: string; role: string }) {
+    return jwt.sign(
+      { sub: user.id, role: user.role },
+      process.env.JWT_SECRET || 'picpee-jwt-secret',
+      { expiresIn: '30d' }
+    );
+  }
 
   async register(dto: RegisterDto) {
     const existingUser = await this.prisma.user.findUnique({
@@ -54,7 +63,7 @@ export class AuthService {
     }
 
     const { password, ...result } = user;
-    return result;
+    return { ...result, accessToken: this.generateToken(result) };
   }
 
   async firebaseLogin(idToken: string) {
@@ -86,7 +95,7 @@ export class AuthService {
     }
 
     const { password, ...result } = user;
-    return result;
+    return { ...result, accessToken: this.generateToken(result) };
   }
 
   async getUserById(userId: string) {

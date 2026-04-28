@@ -1,9 +1,10 @@
-import { Controller, Get, Param, Post, Body, Session, UnauthorizedException, Query } from '@nestjs/common';
+import { Controller, Get, Param, Post, Body, UnauthorizedException, Query, UseGuards, Req } from '@nestjs/common';
 import { ForumService } from './forum.service';
 import { CreateThreadDto } from './dto/forum.dto';
 import { CreatePostDto } from './dto/post.dto';
 import { ToggleLikeDto } from './dto/like.dto';
 import { CreateShareTaskDto } from './dto/share.dto';
+import { JwtGuard, AdminGuard } from '../auth/jwt.guard';
 
 @Controller('forum')
 export class ForumController {
@@ -46,62 +47,48 @@ export class ForumController {
   }
 
   @Post('threads')
-  async createThread(@Body() dto: CreateThreadDto, @Session() session: any) {
-    if (!session.userId) {
-      throw new UnauthorizedException('Bạn cần đăng nhập để tạo bài viết');
-    }
-    return this.forumService.createThread({ ...dto, authorId: session.userId });
+  @UseGuards(JwtGuard)
+  async createThread(@Body() dto: CreateThreadDto, @Req() req: any) {
+    return this.forumService.createThread({ ...dto, authorId: req.user.id });
   }
 
   @Post('posts')
-  async createPost(@Body() dto: CreatePostDto, @Session() session: any) {
-    if (!session.userId) {
-      throw new UnauthorizedException('Bạn cần đăng nhập để bình luận');
-    }
-    return this.forumService.createPost({ ...dto, authorId: session.userId });
+  @UseGuards(JwtGuard)
+  async createPost(@Body() dto: CreatePostDto, @Req() req: any) {
+    return this.forumService.createPost({ ...dto, authorId: req.user.id });
   }
 
   @Post('likes/toggle')
-  async toggleLike(@Body() dto: ToggleLikeDto, @Session() session: any) {
-    if (!session.userId) {
-      throw new UnauthorizedException('Bạn cần đăng nhập để thả tim');
-    }
-    return this.forumService.toggleLike({ ...dto, userId: session.userId });
+  @UseGuards(JwtGuard)
+  async toggleLike(@Body() dto: ToggleLikeDto, @Req() req: any) {
+    return this.forumService.toggleLike({ ...dto, userId: req.user.id });
   }
 
   @Post('share/submit')
-  async submitShare(@Body() dto: CreateShareTaskDto, @Session() session: any) {
-    if (!session.userId) {
-      throw new UnauthorizedException('Bạn cần đăng nhập để tham gia marketing');
-    }
-    return this.forumService.createShareTask({ ...dto, userId: session.userId });
+  @UseGuards(JwtGuard)
+  async submitShare(@Body() dto: CreateShareTaskDto, @Req() req: any) {
+    return this.forumService.createShareTask({ ...dto, userId: req.user.id });
   }
 
   @Get('me/tasks')
-  async getMyTasks(@Session() session: any) {
-    if (!session.userId) {
-      throw new UnauthorizedException('Bạn chưa đăng nhập');
-    }
-    return this.forumService.getUserShareTasks(session.userId);
+  @UseGuards(JwtGuard)
+  async getMyTasks(@Req() req: any) {
+    return this.forumService.getUserShareTasks(req.user.id);
   }
 
   @Get('me/wallet')
-  async getMyWallet(@Session() session: any) {
-    if (!session.userId) {
-      throw new UnauthorizedException('Bạn chưa đăng nhập');
-    }
-    return this.forumService.getUserWallet(session.userId);
+  @UseGuards(JwtGuard)
+  async getMyWallet(@Req() req: any) {
+    return this.forumService.getUserWallet(req.user.id);
   }
 
   @Post('me/withdraw')
-  async withdraw(@Body() body: { amount: number }, @Session() session: any) {
-    if (!session.userId) {
-      throw new UnauthorizedException('Bạn chưa đăng nhập');
-    }
+  @UseGuards(JwtGuard)
+  async withdraw(@Body() body: { amount: number }, @Req() req: any) {
     try {
-       return await this.forumService.requestWithdrawal(session.userId, body.amount);
+      return await this.forumService.requestWithdrawal(req.user.id, body.amount);
     } catch (err: any) {
-       throw new UnauthorizedException(err.message);
+      throw new UnauthorizedException(err.message);
     }
   }
 
@@ -111,53 +98,51 @@ export class ForumController {
   }
 
   @Get('admin/analytics')
-  async getAdminAnalytics(@Session() session: any) {
-    // Basic role check
-    if (!session.userId || session.role !== 'ADMIN') {
-       throw new UnauthorizedException('Bạn không có quyền truy cập');
-    }
+  @UseGuards(AdminGuard)
+  async getAdminAnalytics() {
     return this.forumService.getAnalyticsStats();
   }
 
   @Post('bookmarks/toggle')
-  async toggleBookmark(@Body('threadId') threadId: string, @Session() session: any) {
-    if (!session.userId) throw new UnauthorizedException('Bạn cần đăng nhập để lưu bài viết');
-    return this.forumService.toggleBookmark(threadId, session.userId);
+  @UseGuards(JwtGuard)
+  async toggleBookmark(@Body('threadId') threadId: string, @Req() req: any) {
+    return this.forumService.toggleBookmark(threadId, req.user.id);
   }
 
   @Get('me/bookmarks')
-  async getMyBookmarks(@Session() session: any) {
-    if (!session.userId) throw new UnauthorizedException('Bạn chưa đăng nhập');
-    return this.forumService.getUserBookmarks(session.userId);
+  @UseGuards(JwtGuard)
+  async getMyBookmarks(@Req() req: any) {
+    return this.forumService.getUserBookmarks(req.user.id);
   }
 
   @Get('bookmarks/check/:threadId')
-  async checkBookmark(@Param('threadId') threadId: string, @Session() session: any) {
-    if (!session.userId) return { bookmarked: false };
-    return this.forumService.isBookmarked(threadId, session.userId);
+  async checkBookmark(@Param('threadId') threadId: string, @Req() req: any) {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader) return { bookmarked: false };
+    try {
+      const jwt = require('jsonwebtoken');
+      const payload = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET || 'picpee-jwt-secret') as any;
+      return this.forumService.isBookmarked(threadId, payload.sub);
+    } catch {
+      return { bookmarked: false };
+    }
   }
 
   @Get('me/threads')
-  async getMyThreads(@Session() session: any) {
-    if (!session.userId) {
-      throw new UnauthorizedException('Bạn chưa đăng nhập');
-    }
-    return this.forumService.getUserThreads(session.userId);
+  @UseGuards(JwtGuard)
+  async getMyThreads(@Req() req: any) {
+    return this.forumService.getUserThreads(req.user.id);
   }
 
   @Post('me/threads/:id/delete')
-  async deleteThread(@Param('id') id: string, @Session() session: any) {
-    if (!session.userId) {
-      throw new UnauthorizedException('Bạn chưa đăng nhập');
-    }
-    return this.forumService.deleteThread(id, session.userId);
+  @UseGuards(JwtGuard)
+  async deleteThread(@Param('id') id: string, @Req() req: any) {
+    return this.forumService.deleteThread(id, req.user.id);
   }
 
   @Post('me/threads/:id/update')
-  async updateThread(@Param('id') id: string, @Body() dto: any, @Session() session: any) {
-    if (!session.userId) {
-      throw new UnauthorizedException('Bạn chưa đăng nhập');
-    }
-    return this.forumService.updateThread(id, session.userId, dto);
+  @UseGuards(JwtGuard)
+  async updateThread(@Param('id') id: string, @Body() dto: any, @Req() req: any) {
+    return this.forumService.updateThread(id, req.user.id, dto);
   }
 }

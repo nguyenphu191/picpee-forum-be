@@ -1,6 +1,7 @@
-import { Controller, Post, Body, Session, Get, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Body, Get, UnauthorizedException, BadRequestException, Req, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto } from './dto/auth.dto';
+import { JwtGuard } from './jwt.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -12,34 +13,25 @@ export class AuthController {
   }
 
   @Post('login')
-  async login(@Body() dto: LoginDto, @Session() session: any) {
-    const user = await this.authService.login(dto);
-    session.userId = user.id;
-    session.role = user.role;
-    return user;
+  async login(@Body() dto: LoginDto) {
+    return this.authService.login(dto);
   }
 
   @Post('firebase')
-  async firebaseLogin(@Body('idToken') idToken: string, @Session() session: any) {
+  async firebaseLogin(@Body('idToken') idToken: string) {
     if (!idToken) throw new BadRequestException('idToken is required');
-    const user = await this.authService.firebaseLogin(idToken);
-    session.userId = user.id;
-    session.role = user.role;
-    return user;
+    return this.authService.firebaseLogin(idToken);
   }
 
   @Post('logout')
-  logout(@Session() session: any) {
-    session.destroy();
+  logout() {
     return { message: 'Đăng xuất thành công' };
   }
 
   @Get('me')
-  async me(@Session() session: any) {
-    if (!session.userId) {
-      throw new UnauthorizedException('Chưa đăng nhập');
-    }
-    const user = await this.authService.getUserById(session.userId);
+  @UseGuards(JwtGuard)
+  async me(@Req() req: any) {
+    const user = await this.authService.getUserById(req.user.id);
     if (!user) throw new UnauthorizedException('Người dùng không tồn tại');
     return user;
   }
