@@ -2,8 +2,10 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
-COPY . .
-RUN npm run build
+COPY prisma ./prisma
+COPY src ./src
+COPY tsconfig.json nest-cli.json ./
+RUN npx nest build
 
 FROM node:20-alpine
 WORKDIR /app
