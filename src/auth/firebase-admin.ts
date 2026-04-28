@@ -1,10 +1,13 @@
 import * as admin from 'firebase-admin';
-import * as path from 'path';
 
 if (!admin.apps.length) {
-  const serviceAccountPath = path.resolve(process.cwd(), 'firebase-service-account.json');
+  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!serviceAccountJson) {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON env variable is not set');
+  }
+  const serviceAccount = JSON.parse(serviceAccountJson);
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccountPath),
+    credential: admin.credential.cert(serviceAccount),
   });
 }
 
