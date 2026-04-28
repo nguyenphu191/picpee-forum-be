@@ -10,7 +10,7 @@ async function bootstrap() {
 
   // Enable CORS
   app.enableCors({
-    origin: true,
+    origin: process.env.FRONTEND_URL || true,
     credentials: true,
   });
 
@@ -23,16 +23,16 @@ async function bootstrap() {
         tableName: 'session',
         createTableIfMissing: true,
       }),
-      secret: 'picpee-forum-secret-key-12345',
+      secret: process.env.SESSION_SECRET || 'picpee-forum-secret-key-12345',
       resave: false,
       saveUninitialized: false,
       cookie: {
-        maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+        maxAge: 1000 * 60 * 60 * 24 * 30,
         httpOnly: true,
-        secure: false, // Set to true if using HTTPS
-        sameSite: 'lax',
+        secure: true,
+        sameSite: 'none',
       },
-      name: 'picpee.sid', // Custom cookie name
+      name: 'picpee.sid',
     }),
   );
 
